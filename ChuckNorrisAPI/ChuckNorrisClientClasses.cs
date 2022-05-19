@@ -16,7 +16,7 @@ namespace ChuckNorrisAPI
         static ChuckNorrisClient()
         {
             client = new HttpClient();
-            client.BaseAddress = new Uri("https://api.icndb.com");
+            client.BaseAddress = new Uri("http://api.icndb.com");
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         }
@@ -111,6 +111,34 @@ namespace ChuckNorrisAPI
             {
                 return null;
             }
+        }
+
+        public async static Task<Joke> GetJokeByCategory(String category)
+        {
+            HttpResponseMessage response = await client.GetAsync($"jokes/random?limitTo={category}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                string result = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<SingleJokeResponse>(result);
+                    var joke = data.JokeData;
+                    joke.JokeText = WebUtility.HtmlDecode(joke.JokeText);
+
+                    return data.JokeData;
+                }
+                catch (JsonSerializationException)
+                {
+                    //this is used when a joke/quote with a specific id cannot be retrieved
+                    GeneralResponse generalResponse = JsonConvert.DeserializeObject<GeneralResponse>(result);
+
+                    if (generalResponse.Type != "success")
+                        throw new NoSuchQuoteException($"{generalResponse.Type}. A joke with an id of {category} does not exist");
+                }
+            }
+
+            return null;
         }
     }
 }
